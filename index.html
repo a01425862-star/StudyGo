@@ -2,24 +2,85 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#00c85a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="StudyGo">
+<meta name="description" content="Smart attendance tracking with Face ID and Tec ID scanning">
+
 <title>StudyGo</title>
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="manifest.json">
+
+<!-- Apple Touch Icons -->
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  :root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  html { height: 100%; }
+
   body {
     min-height: 100vh;
+    min-height: -webkit-fill-available;
     background: #0d0f14;
     background-image:
       radial-gradient(ellipse at 20% 50%, rgba(0,200,100,0.07) 0%, transparent 60%),
       radial-gradient(ellipse at 80% 20%, rgba(30,100,255,0.07) 0%, transparent 60%);
     font-family: 'Rajdhani', sans-serif;
     display: flex; flex-direction: column; align-items: center;
-    padding: 32px 20px 48px; gap: 28px;
+    padding: calc(32px + var(--safe-top)) 20px calc(48px + var(--safe-bottom));
+    gap: 28px;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
   }
 
-  /* TOP BAR */
+  /* ── INSTALL BANNER ── */
+  #installBanner {
+    display: none;
+    width: 100%; max-width: 700px;
+    background: linear-gradient(135deg, #0a2a18, #0f3b22);
+    border: 1.5px solid rgba(0,200,90,0.4);
+    border-radius: 14px;
+    padding: 14px 18px;
+    align-items: center;
+    gap: 12px;
+    animation: fadeUp 0.4s ease both;
+  }
+  #installBanner.show { display: flex; }
+  #installBanner p {
+    flex: 1; font-size: 0.85rem; font-weight: 600; color: rgba(0,230,120,0.8);
+    letter-spacing: 1px;
+  }
+  #installBanner button {
+    background: #00c85a; border: none; border-radius: 8px;
+    color: #001a0a; font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 2px;
+    padding: 8px 14px; cursor: pointer; white-space: nowrap;
+    transition: background 0.2s;
+  }
+  #installBanner button:hover { background: #00e67a; }
+  #dismissBanner {
+    background: transparent !important; color: #555 !important;
+    font-size: 1.2rem !important; padding: 4px 8px !important;
+    letter-spacing: 0 !important;
+  }
+
+  /* ── TOP BAR ── */
   .topbar {
     width: 100%; max-width: 700px;
     display: flex; align-items: center; justify-content: space-between;
@@ -41,9 +102,9 @@
   }
   .counter svg { width:22px;height:22px;fill:none;stroke:#aaa;stroke-width:2;stroke-linecap:round;stroke-linejoin:round; }
   .counter-text { font-family:'Orbitron',sans-serif; font-size:1rem; font-weight:700; color:#fff; letter-spacing:2px; }
-  .counter-text span { color:#00e67a; }
+  .counter-text span { color:#00e67a; transition: color 0.3s; }
 
-  /* GREEN CARD */
+  /* ── GREEN ATTENDANCE CARD ── */
   .attendance-card {
     width:100%; max-width:700px; min-height:320px;
     background: linear-gradient(145deg,#0a2a18,#0f3b22,#0a2a18);
@@ -70,6 +131,9 @@
     letter-spacing:8px; color:#00e67a; text-shadow:0 0 20px rgba(0,230,120,0.7);
     pointer-events:none;
   }
+  @media (max-width: 420px) {
+    .attendance-label { font-size: 1.7rem; letter-spacing: 4px; }
+  }
   .hint-text {
     font-size:0.8rem; letter-spacing:2px; color:rgba(0,200,90,0.5); font-weight:600;
     pointer-events:none; transition:opacity 0.2s;
@@ -88,6 +152,7 @@
     border:1.5px solid rgba(0,200,90,0.3); border-radius:10px;
     color:#e0ffe8; font-family:'Rajdhani',sans-serif; font-size:1rem; font-weight:600;
     padding:10px 16px; outline:none; letter-spacing:1px; transition:border-color 0.2s;
+    -webkit-appearance: none;
   }
   .add-area input::placeholder { color:rgba(0,200,90,0.4); }
   .add-area input:focus { border-color:#00e67a; }
@@ -95,6 +160,7 @@
     background:#00c85a; border:none; border-radius:10px;
     color:#001a0a; font-family:'Orbitron',sans-serif; font-size:0.75rem; font-weight:700;
     letter-spacing:2px; padding:10px 20px; cursor:pointer; transition:background 0.2s,transform 0.1s;
+    touch-action: manipulation;
   }
   .add-area button:hover { background:#00e67a; transform:scale(1.03); }
   .add-area button:active { transform:scale(0.97); }
@@ -106,6 +172,7 @@
   }
   .attendance-list::-webkit-scrollbar { width:4px; }
   .attendance-list::-webkit-scrollbar-thumb { background:#00c85a55; border-radius:4px; }
+
   .student-entry {
     display:flex; align-items:center; gap:14px;
     background:rgba(0,200,90,0.08); border:1px solid rgba(0,200,90,0.2);
@@ -120,7 +187,7 @@
   .student-name { flex:1; font-size:1.05rem; font-weight:600; color:#e0ffe8; letter-spacing:1px; }
   .student-check { color:#00e67a; font-size:1.1rem; }
 
-  /* BOTTOM CARDS */
+  /* ── BOTTOM CARDS ── */
   .bottom-row {
     width:100%; max-width:700px;
     display:grid; grid-template-columns:1fr 1fr; gap:20px;
@@ -131,6 +198,7 @@
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:12px; cursor:pointer; position:relative; overflow:hidden;
     transition:transform 0.2s, box-shadow 0.2s; user-select:none;
+    touch-action: manipulation;
   }
   .action-card:hover { transform:translateY(-4px) scale(1.02); }
   .action-card:active { transform:scale(0.97); }
@@ -157,19 +225,33 @@
   .card-faceid .card-sub { color:#9ccfff; }
   .card-tecid  .card-sub { color:#ffe066; }
 
-  /* CAMERA MODAL */
+  /* ── OFFLINE BADGE ── */
+  #offlineBadge {
+    display: none;
+    position: fixed; bottom: calc(16px + var(--safe-bottom)); right: 16px;
+    background: #1a1a2e; border: 1.5px solid #ff4d4d;
+    border-radius: 10px; padding: 8px 14px;
+    font-family: 'Orbitron', sans-serif; font-size: 0.65rem;
+    letter-spacing: 2px; color: #ff4d4d; z-index: 999;
+    animation: fadeUp 0.3s ease both;
+  }
+  #offlineBadge.show { display: block; }
+
+  /* ── CAMERA MODAL ── */
   .modal-overlay {
     position:fixed; inset:0;
     background:rgba(0,0,0,0.85); backdrop-filter:blur(8px);
     display:flex; align-items:center; justify-content:center;
     z-index:1000; opacity:0; pointer-events:none; transition:opacity 0.25s;
+    padding: 16px;
   }
   .modal-overlay.open { opacity:1; pointer-events:all; }
   .modal {
     background:#111520; border-radius:22px;
     padding:32px 28px; display:flex; flex-direction:column; align-items:center; gap:20px;
-    max-width:480px; width:90%; position:relative;
+    max-width:480px; width:100%; position:relative;
     transform:scale(0.92); transition:transform 0.25s;
+    max-height: 90vh; overflow-y: auto;
   }
   .modal-overlay.open .modal { transform:scale(1); }
   .modal-title {
@@ -196,10 +278,8 @@
   }
   .cam-placeholder svg { width:64px;height:64px;fill:none;stroke:#444;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round; }
 
-  /* scan overlay */
   .scan-line {
     position:absolute; left:0; right:0; height:2px;
-    background:linear-gradient(90deg,transparent,#00e67a,transparent);
     animation:scanMove 2.5s linear infinite; display:none;
   }
   .modal.faceid-modal .scan-line { background:linear-gradient(90deg,transparent,#5aafff,transparent); }
@@ -208,7 +288,7 @@
   @keyframes scanMove { 0% { top:0; } 100% { top:100%; } }
 
   .corners { position:absolute; inset:16px; pointer-events:none; }
-  .corner { position:absolute; width:20px; height:20px; border-color:#00e67a; border-style:solid; display:none; }
+  .corner { position:absolute; width:20px; height:20px; border-style:solid; display:none; }
   .modal.faceid-modal .corner { border-color:#5aafff; }
   .modal.tecid-modal  .corner { border-color:#f5c800; }
   .corner.on { display:block; }
@@ -226,6 +306,7 @@
     flex:1; border:none; border-radius:10px;
     font-family:'Orbitron',sans-serif; font-size:0.72rem; font-weight:700; letter-spacing:2px;
     padding:12px 16px; cursor:pointer; transition:opacity 0.2s, transform 0.1s;
+    touch-action: manipulation;
   }
   .btn-start:disabled { opacity:0.5; cursor:default; }
   .btn-start:not(:disabled):active { transform:scale(0.97); }
@@ -236,6 +317,7 @@
     border:1.5px solid rgba(255,255,255,0.15); color:#888;
     font-family:'Orbitron',sans-serif; font-size:0.72rem; font-weight:700; letter-spacing:2px;
     padding:12px 16px; cursor:pointer; transition:border-color 0.2s, color 0.2s;
+    touch-action: manipulation;
   }
   .btn-close:hover { border-color:#aaa; color:#ccc; }
 
@@ -243,9 +325,22 @@
     from { opacity:0; transform:translateY(24px); }
     to   { opacity:1; transform:translateY(0); }
   }
+
+  @media (max-width: 380px) {
+    .bottom-row { grid-template-columns: 1fr; }
+    .modal { padding: 24px 16px; }
+    .modal-btns { flex-direction: column; }
+  }
 </style>
 </head>
 <body>
+
+<!-- INSTALL PROMPT BANNER -->
+<div id="installBanner">
+  <p>📲 ADD STUDYGO TO HOME SCREEN</p>
+  <button id="installBtn">INSTALL</button>
+  <button id="dismissBanner">✕</button>
+</div>
 
 <!-- TOP BAR -->
 <div class="topbar">
@@ -261,18 +356,18 @@
   </div>
 </div>
 
-<!-- GREEN CARD -->
+<!-- GREEN ATTENDANCE CARD -->
 <div class="attendance-card" id="attendanceCard" onclick="activateAttendance(event)">
   <div class="attendance-label">ATTENDANCE</div>
   <div class="hint-text">↓ CLICK TO ADD STUDENT ↓</div>
   <div class="attendance-list" id="list"></div>
   <div class="add-area" id="addArea">
-    <input id="nameInput" type="text" placeholder="Enter student name…" maxlength="40">
+    <input id="nameInput" type="text" placeholder="Enter student name…" maxlength="40" autocomplete="off">
     <button onclick="addStudent(event)">ADD</button>
   </div>
 </div>
 
-<!-- BOTTOM CARDS -->
+<!-- BLUE & YELLOW CARDS -->
 <div class="bottom-row">
   <div class="action-card card-faceid" onclick="openCamera('faceid')">
     <div class="card-icon">👁️</div>
@@ -285,6 +380,9 @@
     <div class="card-sub">TAP TO SCAN</div>
   </div>
 </div>
+
+<!-- OFFLINE BADGE -->
+<div id="offlineBadge">⚡ OFFLINE MODE</div>
 
 <!-- CAMERA MODAL -->
 <div class="modal-overlay" id="modalOverlay" onclick="overlayClick(event)">
@@ -301,7 +399,7 @@
         </svg>
         <span>CAMERA OFF</span>
       </div>
-      <video id="videoEl" autoplay playsinline></video>
+      <video id="videoEl" autoplay playsinline muted></video>
       <div class="scan-line" id="scanLine"></div>
       <div class="corners">
         <div class="corner tl" id="c1"></div>
@@ -319,13 +417,81 @@
 </div>
 
 <script>
-/* ─── ATTENDANCE ─── */
+/* ══════════════════════════════════════════
+   SERVICE WORKER REGISTRATION
+══════════════════════════════════════════ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.log('SW error:', err));
+  });
+}
+
+/* ══════════════════════════════════════════
+   PWA INSTALL PROMPT
+══════════════════════════════════════════ */
+let deferredPrompt = null;
+const installBanner = document.getElementById('installBanner');
+const installBtn    = document.getElementById('installBtn');
+const dismissBtn    = document.getElementById('dismissBanner');
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installBanner.classList.add('show');
+});
+
+installBtn.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  installBanner.classList.remove('show');
+});
+
+dismissBtn.addEventListener('click', () => installBanner.classList.remove('show'));
+
+window.addEventListener('appinstalled', () => {
+  installBanner.classList.remove('show');
+  deferredPrompt = null;
+});
+
+/* ══════════════════════════════════════════
+   OFFLINE DETECTION
+══════════════════════════════════════════ */
+const offlineBadge = document.getElementById('offlineBadge');
+function updateOnlineStatus() {
+  if (!navigator.onLine) offlineBadge.classList.add('show');
+  else offlineBadge.classList.remove('show');
+}
+window.addEventListener('online',  updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
+/* ══════════════════════════════════════════
+   ATTENDANCE
+══════════════════════════════════════════ */
 const MAX = 30;
 let students = [];
 const listEl    = document.getElementById('list');
 const countEl   = document.getElementById('count');
 const nameInput = document.getElementById('nameInput');
 const card      = document.getElementById('attendanceCard');
+
+// Persist students in localStorage
+function loadStudents() {
+  try {
+    const saved = localStorage.getItem('studygo_students');
+    if (saved) { students = JSON.parse(saved); render(); }
+  } catch(e) {}
+}
+
+function saveStudents() {
+  try { localStorage.setItem('studygo_students', JSON.stringify(students)); } catch(e) {}
+}
+
+loadStudents();
 
 nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') addStudent(e); });
 
@@ -348,6 +514,7 @@ function addStudent(e) {
   students.push(name);
   nameInput.value = '';
   nameInput.focus();
+  saveStudents();
   render();
 }
 
@@ -368,18 +535,19 @@ function render() {
 
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-/* ─── CAMERA ─── */
+/* ══════════════════════════════════════════
+   CAMERA MODAL
+══════════════════════════════════════════ */
 let currentStream = null;
-const overlay      = document.getElementById('modalOverlay');
-const modalEl      = document.getElementById('modal');
-const modalTitle   = document.getElementById('modalTitle');
-const videoEl      = document.getElementById('videoEl');
-const scanLine     = document.getElementById('scanLine');
-const camHolder    = document.getElementById('camPlaceholder');
-const modalStatus  = document.getElementById('modalStatus');
-const btnStart     = document.getElementById('btnStart');
-const cornerEls    = [document.getElementById('c1'),document.getElementById('c2'),
-                      document.getElementById('c3'),document.getElementById('c4')];
+const overlay     = document.getElementById('modalOverlay');
+const modalEl     = document.getElementById('modal');
+const modalTitle  = document.getElementById('modalTitle');
+const videoEl     = document.getElementById('videoEl');
+const scanLine    = document.getElementById('scanLine');
+const camHolder   = document.getElementById('camPlaceholder');
+const modalStatus = document.getElementById('modalStatus');
+const btnStart    = document.getElementById('btnStart');
+const cornerEls   = ['c1','c2','c3','c4'].map(id => document.getElementById(id));
 
 function openCamera(mode) {
   modalEl.className = 'modal ' + (mode === 'faceid' ? 'faceid-modal' : 'tecid-modal');
@@ -403,7 +571,8 @@ function startCamera() {
   modalStatus.textContent = 'REQUESTING PERMISSION…';
   btnStart.disabled = true;
 
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+    .catch(() => navigator.mediaDevices.getUserMedia({ video: true, audio: false }))
     .then(stream => {
       currentStream = stream;
       videoEl.srcObject = stream;
@@ -418,7 +587,7 @@ function startCamera() {
       btnStart.disabled = false;
       btnStart.textContent = 'RETRY';
       modalStatus.textContent =
-        err.name === 'NotAllowedError' ? 'PERMISSION DENIED — ALLOW CAMERA IN BROWSER' :
+        err.name === 'NotAllowedError' ? 'PERMISSION DENIED — ALLOW CAMERA ACCESS' :
         err.name === 'NotFoundError'   ? 'NO CAMERA DETECTED ON THIS DEVICE' :
         'ERROR: ' + (err.message || err.name).toUpperCase().slice(0,44);
     });
@@ -434,7 +603,11 @@ function closeCamera() {
 }
 
 function stopStream() {
-  if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; videoEl.srcObject = null; }
+  if (currentStream) {
+    currentStream.getTracks().forEach(t => t.stop());
+    currentStream = null;
+    videoEl.srcObject = null;
+  }
 }
 
 function overlayClick(e) { if (e.target === overlay) closeCamera(); }

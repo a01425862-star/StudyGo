@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#00c85a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="StudyGo">
+<title>StudyGo</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<!-- face-api.js for facial descriptor generation -->
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<style>
+/*═══════════════════════════════════════════
+  RESET & ROOT
+═══════════════════════════════════════════*/
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#00c85a;--green-glow:rgba(0,200,90,0.25);--green-dark:#0a2a18;
+  --blue:#1a7fff;--blue-glow:rgba(26,127,255,0.25);
+  --yellow:#f5c800;--yellow-glow:rgba(245,200,0,0.2);
+  --purple:#a855f7;--purple-glow:rgba(168,85,247,0.25);
+  --bg:#0d0f14;--surface:#111520;--surface2:#161b28;
+  --border:rgba(255,255,255,0.08);--text:#f0f4ff;--muted:#667;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+html{height:100%}
+body{
+  min-height:100vh;background:var(--bg);
+  background-image:
+    radial-gradient(ellipse at 20% 50%,rgba(0,200,100,0.07) 0%,transparent 60%),
+    radial-gradient(ellipse at 80% 20%,rgba(30,100,255,0.07) 0%,transparent 60%);
+  font-family:'Rajdhani',sans-serif;color:var(--text);
+  -webkit-tap-highlight-color:transparent;overflow-x:hidden;
+}
+
+/*═══════════════════════════════════════════
+  PAGES SYSTEM
+═══════════════════════════════════════════*/
+.page{
+  display:none;flex-direction:column;align-items:center;
+  padding:calc(32px + var(--safe-top)) 20px calc(64px + var(--safe-bottom));
+  gap:24px;min-height:100vh;
+}
+.page.active{display:flex}
+
+/*═══════════════════════════════════════════
+  TOPBAR (shared)
+═══════════════════════════════════════════*/
+.topbar{
+  width:100%;max-width:700px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.brand{
+  font-family:'Orbitron',sans-serif;
+  font-size:2rem;font-weight:900;letter-spacing:4px;color:#fff;
+  text-shadow:0 0 20px rgba(0,230,120,0.6),0 0 60px rgba(0,230,120,0.2);
+  animation:pulseGlow 3s ease-in-out infinite;cursor:pointer;
+}
+@keyframes pulseGlow{
+  0%,100%{text-shadow:0 0 20px rgba(0,230,120,0.6),0 0 60px rgba(0,230,120,0.2)}
+  50%{text-shadow:0 0 30px rgba(0,230,120,0.9),0 0 80px rgba(0,230,120,0.4)}
+}
+.counter{
+  background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.15);
+  border-radius:12px;padding:8px 18px;
+  display:flex;align-items:center;gap:10px;backdrop-filter:blur(8px);
+}
+.counter svg{width:22px;height:22px;fill:none;stroke:#aaa;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.counter-text{font-family:'Orbitron',sans-serif;font-size:1rem;font-weight:700;color:#fff;letter-spacing:2px}
+.counter-text span{color:var(--green);transition:color .3s}
+
+/* back button */
+.back-btn{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,0.05);border:1.5px solid rgba(255,255,255,0.12);
+  border-radius:10px;padding:8px 14px;cursor:pointer;
+  font-family:'Orbitron',sans-serif;font-size:0.65rem;letter-spacing:2px;color:#888;
+  transition:all .2s;
+}
+.back-btn:hover{border-color:#aaa;color:#fff}
+.back-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+
+/*═══════════════════════════════════════════
+  NAV DOCK (bottom)
+═══════════════════════════════════════════*/
+.nav-dock{
+  position:fixed;bottom:calc(16px + var(--safe-bottom));left:50%;transform:translateX(-50%);
+  background:rgba(17,21,32,0.92);backdrop-filter:blur(16px);
+  border:1.5px solid rgba(255,255,255,0.1);border-radius:20px;
+  padding:10px 8px;display:flex;gap:4px;z-index:100;
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:8px 18px;border-radius:14px;cursor:pointer;
+  font-family:'Orbitron',sans-serif;font-size:0.55rem;letter-spacing:1.5px;
+  color:#555;transition:all .2s;user-select:none;
+}
+.nav-item svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nav-item.active{background:rgba(0,200,90,0.12);color:var(--green)}
+.nav-item.active.blue{background:rgba(26,127,255,0.12);color:var(--blue)}
+.nav-item.active.purple{background:rgba(168,85,247,0.12);color:var(--purple)}
+
+/*═══════════════════════════════════════════
+  ── PAGE 1: ATTENDANCE ──
+═══════════════════════════════════════════*/
+.attendance-card{
+  width:100%;max-width:700px;min-height:300px;
+  background:linear-gradient(145deg,#0a2a18,#0f3b22,#0a2a18);
+  border:2px solid var(--green);border-radius:20px;
+  box-shadow:0 0 40px var(--green-glow),inset 0 0 60px rgba(0,200,90,0.05);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:20px;padding:36px 24px;position:relative;overflow:hidden;cursor:pointer;
+  transition:box-shadow .2s,border-color .2s;
+}
+.attendance-card::before{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 38px,rgba(0,200,90,0.03) 38px,rgba(0,200,90,0.03) 40px);
+  pointer-events:none;
+}
+.attendance-card.active,.attendance-card:hover{
+  box-shadow:0 0 60px rgba(0,220,90,0.35),inset 0 0 60px rgba(0,200,90,0.08);
+  border-color:#00e67a;
+}
+.attendance-label{
+  font-family:'Orbitron',sans-serif;font-size:2.2rem;font-weight:900;
+  letter-spacing:8px;color:var(--green);text-shadow:0 0 20px rgba(0,230,120,0.7);
+  pointer-events:none;
+}
+.hint-text{font-size:.8rem;letter-spacing:2px;color:rgba(0,200,90,.5);font-weight:600;pointer-events:none;transition:opacity .2s}
+.attendance-card.active .hint-text{opacity:0;pointer-events:none}
+.add-area{
+  display:flex;gap:10px;width:100%;max-width:500px;
+  opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s;pointer-events:none;
+}
+.attendance-card.active .add-area{opacity:1;transform:translateY(0);pointer-events:all}
+.add-area input{
+  flex:1;background:rgba(0,0,0,.4);border:1.5px solid rgba(0,200,90,.3);border-radius:10px;
+  color:#e0ffe8;font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:600;
+  padding:10px 16px;outline:none;letter-spacing:1px;transition:border-color .2s;-webkit-appearance:none;
+}
+.add-area input::placeholder{color:rgba(0,200,90,.4)}
+.add-area input:focus{border-color:var(--green)}
+.add-area button,.btn-green{
+  background:var(--green);border:none;border-radius:10px;
+  color:#001a0a;font-family:'Orbitron',sans-serif;font-size:.75rem;font-weight:700;
+  letter-spacing:2px;padding:10px 20px;cursor:pointer;transition:background .2s,transform .1s;
+  touch-action:manipulation;
+}
+.add-area button:hover,.btn-green:hover{background:#00e67a;transform:scale(1.03)}
+.add-area button:active,.btn-green:active{transform:scale(.97)}
+.attendance-list{
+  width:100%;max-width:500px;display:flex;flex-direction:column;gap:10px;
+  max-height:220px;overflow-y:auto;padding:0 4px;
+}
+.attendance-list::-webkit-scrollbar{width:4px}
+.attendance-list::-webkit-scrollbar-thumb{background:#00c85a55;border-radius:4px}
+.student-entry{
+  display:flex;align-items:center;gap:14px;
+  background:rgba(0,200,90,.08);border:1px solid rgba(0,200,90,.2);
+  border-radius:10px;padding:10px 16px;animation:slideIn .3s ease both;
+}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.student-num{font-family:'Orbitron',sans-serif;font-size:.7rem;color:var(--green);min-width:28px;font-weight:700}
+.student-name{flex:1;font-size:1.05rem;font-weight:600;color:#e0ffe8;letter-spacing:1px}
+.student-check{color:var(--green);font-size:1.1rem}
+.bottom-row{
+  width:100%;max-width:700px;display:grid;grid-template-columns:1fr 1fr;gap:20px;
+}
+.action-card{
+  border-radius:18px;padding:40px 20px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;cursor:pointer;position:relative;overflow:hidden;
+  transition:transform .2s,box-shadow .2s;user-select:none;touch-action:manipulation;
+}
+.action-card:hover{transform:translateY(-4px) scale(1.02)}
+.action-card:active{transform:scale(.97)}
+.card-faceid{background:linear-gradient(145deg,#071830,#0a2550,#071830);border:2px solid var(--blue);box-shadow:0 0 30px var(--blue-glow),inset 0 0 40px rgba(26,127,255,.05)}
+.card-faceid:hover{box-shadow:0 8px 40px rgba(26,127,255,.35),inset 0 0 40px rgba(26,127,255,.08)}
+.card-tecid{background:linear-gradient(145deg,#1a1400,#2a2000,#1a1400);border:2px solid var(--yellow);box-shadow:0 0 30px var(--yellow-glow),inset 0 0 40px rgba(245,200,0,.04)}
+.card-tecid:hover{box-shadow:0 8px 40px rgba(245,200,0,.28),inset 0 0 40px rgba(245,200,0,.08)}
+.card-icon{font-size:2.2rem;line-height:1;pointer-events:none}
+.card-label{font-family:'Orbitron',sans-serif;font-size:1.15rem;font-weight:700;letter-spacing:4px;text-transform:uppercase;pointer-events:none}
+.card-faceid .card-label{color:#5aafff;text-shadow:0 0 14px rgba(26,127,255,.6)}
+.card-tecid  .card-label{color:var(--yellow);text-shadow:0 0 14px rgba(245,200,0,.5)}
+.card-sub{font-size:.78rem;letter-spacing:2px;font-weight:600;opacity:.45;pointer-events:none}
+.card-faceid .card-sub{color:#9ccfff}
+.card-tecid  .card-sub{color:#ffe066}
+
+/*═══════════════════════════════════════════
+  ── PAGE 2: SCHOOL ADMIN ──
+═══════════════════════════════════════════*/
+.page-header{
+  width:100%;max-width:700px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.page-title{
+  font-family:'Orbitron',sans-serif;font-size:1.4rem;font-weight:900;
+  letter-spacing:4px;color:#fff;
+}
+.page-subtitle{font-size:.85rem;letter-spacing:1.5px;color:#555;font-weight:600}
+
+/* search bar */
+.search-bar{
+  width:100%;max-width:700px;
+  display:flex;gap:10px;
+}
+.search-bar input{
+  flex:1;background:rgba(255,255,255,.04);
+  border:1.5px solid rgba(255,255,255,.1);border-radius:12px;
+  color:#fff;font-family:'Rajdhani',sans-serif;font-size:1rem;font-weight:600;
+  padding:12px 18px;outline:none;letter-spacing:1px;transition:border-color .2s;
+}
+.search-bar input::placeholder{color:#444}
+.search-bar input:focus{border-color:rgba(255,255,255,.25)}
+
+/* add student button */
+.btn-add-student{
+  background:linear-gradient(135deg,#0f3b22,#0a2a18);
+  border:1.5px solid var(--green);border-radius:12px;
+  color:var(--green);font-family:'Orbitron',sans-serif;
+  font-size:.65rem;font-weight:700;letter-spacing:2px;
+  padding:12px 18px;cursor:pointer;transition:all .2s;white-space:nowrap;
+}
+.btn-add-student:hover{background:var(--green);color:#001a0a;box-shadow:0 0 20px var(--green-glow)}
+
+/* student cards grid */
+.students-grid{
+  width:100%;max-width:700px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;
+}
+.student-card{
+  background:var(--surface);border:1.5px solid var(--border);border-radius:16px;
+  padding:20px 16px;display:flex;flex-direction:column;align-items:center;gap:12px;
+  cursor:pointer;transition:all .2s;position:relative;overflow:hidden;
+}
+.student-card:hover{border-color:rgba(255,255,255,.2);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.student-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--green),transparent);opacity:0;transition:opacity .2s;
+}
+.student-card:hover::before{opacity:1}
+.student-avatar{
+  width:72px;height:72px;border-radius:50%;
+  background:linear-gradient(135deg,#1a2a1a,#0a1a0a);
+  border:2px solid rgba(0,200,90,.2);overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.8rem;position:relative;
+}
+.student-avatar img{width:100%;height:100%;object-fit:cover}
+.avatar-badge{
+  position:absolute;bottom:0;right:0;
+  width:18px;height:18px;border-radius:50%;border:2px solid var(--surface);
+  display:flex;align-items:center;justify-content:center;font-size:.55rem;
+}
+.avatar-badge.has-descriptor{background:var(--green)}
+.avatar-badge.no-descriptor{background:#333}
+.sc-name{font-family:'Orbitron',sans-serif;font-size:.8rem;font-weight:700;letter-spacing:1px;text-align:center}
+.sc-id{font-size:.75rem;color:#555;letter-spacing:1px}
+.sc-attendance{
+  font-size:.72rem;letter-spacing:1px;font-weight:600;
+  background:rgba(0,200,90,.08);border:1px solid rgba(0,200,90,.15);
+  border-radius:20px;padding:3px 10px;color:rgba(0,200,90,.8);
+}
+.empty-state{
+  width:100%;max-width:700px;
+  display:flex;flex-direction:column;align-items:center;gap:16px;
+  padding:60px 20px;color:#333;
+}
+.empty-state svg{width:64px;height:64px;fill:none;stroke:#333;stroke-width:1.5}
+.empty-state p{font-family:'Orbitron',sans-serif;font-size:.75rem;letter-spacing:2px}
+
+/*═══════════════════════════════════════════
+  ── STUDENT DETAIL MODAL (School) ──
+═══════════════════════════════════════════*/
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.88);backdrop-filter:blur(10px);
+  display:flex;align-items:center;justify-content:center;
+  z-index:200;opacity:0;pointer-events:none;transition:opacity .25s;padding:16px;
+}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{
+  background:var(--surface);border-radius:22px;
+  padding:32px 28px;display:flex;flex-direction:column;align-items:center;gap:20px;
+  max-width:500px;width:100%;max-height:90vh;overflow-y:auto;
+  transform:scale(.92);transition:transform .25s;
+}
+.modal-overlay.open .modal{transform:scale(1)}
+
+/* detail modal specific */
+.detail-modal{border:2px solid rgba(255,255,255,.1)}
+.detail-avatar{
+  width:100px;height:100px;border-radius:50%;
+  background:linear-gradient(135deg,#1a2a1a,#0a1a0a);
+  border:2px solid rgba(0,200,90,.3);overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+  font-size:2.8rem;position:relative;cursor:pointer;
+  transition:border-color .2s;
+}
+.detail-avatar:hover{border-color:var(--green)}
+.detail-avatar img{width:100%;height:100%;object-fit:cover}
+.detail-avatar .upload-hint{
+  position:absolute;inset:0;background:rgba(0,0,0,.6);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .2s;border-radius:50%;
+  font-size:.6rem;font-family:'Orbitron',sans-serif;letter-spacing:1px;color:#fff;text-align:center;
+}
+.detail-avatar:hover .upload-hint{opacity:1}
+.detail-name{font-family:'Orbitron',sans-serif;font-size:1.2rem;font-weight:900;letter-spacing:3px}
+.detail-meta{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.meta-tag{
+  font-size:.7rem;letter-spacing:1.5px;font-weight:600;
+  border-radius:20px;padding:4px 12px;
+}
+.meta-green{background:rgba(0,200,90,.1);border:1px solid rgba(0,200,90,.2);color:var(--green)}
+.meta-blue{background:rgba(26,127,255,.1);border:1px solid rgba(26,127,255,.2);color:var(--blue)}
+.meta-yellow{background:rgba(245,200,0,.1);border:1px solid rgba(245,200,0,.2);color:var(--yellow)}
+.meta-red{background:rgba(255,77,77,.1);border:1px solid rgba(255,77,77,.2);color:#ff4d4d}
+
+/* descriptor section */
+.descriptor-section{
+  width:100%;background:rgba(0,0,0,.3);border:1.5px solid var(--border);
+  border-radius:14px;padding:18px;
+}
+.desc-title{
+  font-family:'Orbitron',sans-serif;font-size:.65rem;letter-spacing:2px;
+  color:#555;margin-bottom:12px;
+}
+.descriptor-status{
+  display:flex;align-items:center;gap:10px;
+  font-size:.85rem;font-weight:600;letter-spacing:1px;
+}
+.desc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.desc-dot.ok{background:var(--green);box-shadow:0 0 8px var(--green)}
+.desc-dot.none{background:#333}
+.desc-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.btn-sm{
+  border:none;border-radius:8px;
+  font-family:'Orbitron',sans-serif;font-size:.6rem;font-weight:700;letter-spacing:1.5px;
+  padding:8px 14px;cursor:pointer;transition:all .2s;touch-action:manipulation;
+}
+.btn-generate{background:var(--green);color:#001a0a}
+.btn-generate:hover{background:#00e67a}
+.btn-generate:disabled{opacity:.4;cursor:default}
+.btn-outline{background:transparent;border:1.5px solid rgba(255,255,255,.12);color:#888}
+.btn-outline:hover{border-color:#aaa;color:#fff}
+.btn-danger{background:rgba(255,77,77,.1);border:1.5px solid rgba(255,77,77,.2);color:#ff4d4d}
+.btn-danger:hover{background:rgba(255,77,77,.2)}
+
+/* photo upload area */
+.photo-upload-area{
+  width:100%;border:2px dashed rgba(0,200,90,.2);border-radius:12px;
+  padding:24px;display:flex;flex-direction:column;align-items:center;gap:10px;
+  cursor:pointer;transition:border-color .2s;
+  font-family:'Orbitron',sans-serif;font-size:.65rem;letter-spacing:2px;color:#444;
+}
+.photo-upload-area:hover{border-color:rgba(0,200,90,.5);color:rgba(0,200,90,.7)}
+.photo-upload-area svg{width:36px;height:36px;fill:none;stroke:currentColor;stroke-width:1.5}
+#photoFileInput{display:none}
+
+/* attendance log in detail */
+.att-log{width:100%;display:flex;flex-direction:column;gap:8px;max-height:160px;overflow-y:auto}
+.att-log::-webkit-scrollbar{width:4px}
+.att-log::-webkit-scrollbar-thumb{background:#ffffff15;border-radius:4px}
+.att-row{
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(255,255,255,.03);border-radius:8px;padding:8px 12px;
+  font-size:.82rem;
+}
+.att-date{color:#888;font-size:.75rem;letter-spacing:.5px}
+.att-present{color:var(--green);font-weight:700;font-size:.75rem;letter-spacing:1px}
+.att-absent{color:#ff4d4d;font-weight:700;font-size:.75rem;letter-spacing:1px}
+
+/* progress ring */
+.progress-ring-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+.progress-ring-svg{transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:rgba(255,255,255,.06);stroke-width:6}
+.ring-fill{fill:none;stroke:var(--green);stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .5s ease}
+.ring-label{font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:900;fill:#fff}
+.ring-sub{font-size:.6rem;fill:#555;font-family:'Rajdhani',sans-serif}
+
+/* modal form */
+.modal-form{width:100%;display:flex;flex-direction:column;gap:12px}
+.form-field{display:flex;flex-direction:column;gap:6px}
+.form-label{font-family:'Orbitron',sans-serif;font-size:.6rem;letter-spacing:2px;color:#555}
+.form-input{
+  background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.1);
+  border-radius:10px;color:#fff;font-family:'Rajdhani',sans-serif;
+  font-size:1rem;font-weight:600;padding:10px 14px;outline:none;
+  transition:border-color .2s;-webkit-appearance:none;
+}
+.form-input:focus{border-color:rgba(255,255,255,.3)}
+.modal-title{
+  font-family:'Orbitron',sans-serif;font-size:1.1rem;font-weight:900;
+  letter-spacing:4px;text-align:center;
+}
+.modal-btns{display:flex;gap:10px;width:100%}
+.btn-blue{background:var(--blue);border:none;border-radius:10px;color:#fff;font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:2px;padding:12px;cursor:pointer;flex:1;transition:all .2s}
+.btn-blue:hover{background:#3d94ff}
+.btn-close-modal{
+  flex:1;border-radius:10px;background:transparent;
+  border:1.5px solid rgba(255,255,255,.12);color:#666;
+  font-family:'Orbitron',sans-serif;font-size:.7rem;font-weight:700;
+  letter-spacing:2px;padding:12px;cursor:pointer;transition:all .2s;
+}
+.btn-close-modal:hover{border-color:#aaa;color:#ccc}
+.divider{width:100%;height:1px;background:var(--border)}
+
+/*═══════════════════════════════════════════
+  ── PAGE 3: STUDENT PROFILE ──
+═══════════════════════════════════════════*/
+.profile-hero{
+  width:100%;max-width:700px;
+  background:linear-gradient(145deg,#120a28,#1a0d38);
+  border:2px solid rgba(168,85,247,.3);border-radius:20px;
+  padding:32px 24px;display:flex;flex-direction:column;align-items:center;gap:16px;
+  position:relative;overflow:hidden;
+}
+.profile-hero::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 0%,rgba(168,85,247,.15),transparent 60%);
+  pointer-events:none;
+}
+.profile-big-avatar{
+  width:100px;height:100px;border-radius:50%;
+  background:linear-gradient(135deg,#2a1a4a,#1a0d2e);
+  border:2px solid rgba(168,85,247,.4);overflow:hidden;
+  display:flex;align-items:center;justify-content:center;font-size:3rem;
+  box-shadow:0 0 30px rgba(168,85,247,.2);
+}
+.profile-big-avatar img{width:100%;height:100%;object-fit:cover}
+.profile-name{font-family:'Orbitron',sans-serif;font-size:1.3rem;font-weight:900;letter-spacing:3px;text-align:center}
+.profile-id{font-size:.8rem;letter-spacing:2px;color:rgba(168,85,247,.6);font-weight:600}
+.profile-stats{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+  width:100%;max-width:400px;
+}
+.stat-box{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;padding:12px;text-align:center;
+}
+.stat-val{font-family:'Orbitron',sans-serif;font-size:1.4rem;font-weight:900;color:#fff}
+.stat-label{font-size:.62rem;letter-spacing:1.5px;color:#555;margin-top:2px}
+
+/* attendance calendar */
+.calendar-wrap{
+  width:100%;max-width:700px;
+  background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:20px;
+}
+.cal-header{
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;
+}
+.cal-title{font-family:'Orbitron',sans-serif;font-size:.8rem;letter-spacing:2px;color:#888}
+.cal-nav{
+  display:flex;gap:8px;
+}
+.cal-nav button{
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:8px;padding:6px 10px;cursor:pointer;color:#666;
+  font-size:.8rem;transition:all .2s;
+}
+.cal-nav button:hover{border-color:#aaa;color:#fff}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-day-name{
+  font-family:'Orbitron',sans-serif;font-size:.55rem;letter-spacing:1px;
+  color:#444;text-align:center;padding:4px 0;
+}
+.cal-day{
+  aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  border-radius:8px;font-size:.8rem;font-weight:600;
+  transition:all .15s;position:relative;
+}
+.cal-day.empty{opacity:0}
+.cal-day.today{border:1.5px solid rgba(255,255,255,.2);color:#fff}
+.cal-day.present{background:rgba(0,200,90,.15);color:var(--green);font-weight:700}
+.cal-day.absent{background:rgba(255,77,77,.08);color:rgba(255,77,77,.5)}
+.cal-day.future{color:#333}
+
+/* student login panel */
+.login-panel{
+  width:100%;max-width:400px;
+  background:var(--surface);border:1.5px solid var(--border);border-radius:20px;
+  padding:36px 28px;display:flex;flex-direction:column;align-items:center;gap:20px;
+}
+.login-icon{font-size:3rem}
+.login-title{font-family:'Orbitron',sans-serif;font-size:1rem;font-weight:900;letter-spacing:3px;text-align:center}
+.login-subtitle{font-size:.8rem;letter-spacing:1.5px;color:#555;text-align:center}
+
+/* attendance summary list */
+.att-summary{
+  width:100%;max-width:700px;
+  background:var(--surface);border:1.5px solid var(--border);border-radius:16px;
+  overflow:hidden;
+}
+.att-summary-header{
+  padding:16px 20px;border-bottom:1px solid var(--border);
+  font-family:'Orbitron',sans-serif;font-size:.7rem;letter-spacing:2px;color:#555;
+}
+.att-item{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.04);
+  transition:background .15s;
+}
+.att-item:last-child{border-bottom:none}
+.att-item:hover{background:rgba(255,255,255,.02)}
+.att-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.att-dot.p{background:var(--green);box-shadow:0 0 6px var(--green)}
+.att-dot.a{background:#ff4d4d}
+.att-item-date{flex:1;font-size:.88rem;font-weight:600;color:#ccc}
+.att-item-class{font-size:.75rem;color:#555;letter-spacing:.5px}
+.att-item-status{font-family:'Orbitron',sans-serif;font-size:.6rem;letter-spacing:1.5px;font-weight:700}
+.att-item-status.p{color:var(--green)}
+.att-item-status.a{color:#ff4d4d}
+
+/*═══════════════════════════════════════════
+  CAMERA MODAL (shared)
+═══════════════════════════════════════════*/
+.cam-modal{border:2px solid var(--blue)}
+.cam-modal .modal-title{color:#5aafff;text-shadow:0 0 12px rgba(26,127,255,.6)}
+.cam-modal.tecid{border-color:var(--yellow)}
+.cam-modal.tecid .modal-title{color:var(--yellow);text-shadow:0 0 12px rgba(245,200,0,.5)}
+.camera-wrap{
+  width:100%;aspect-ratio:4/3;background:#000;
+  border-radius:14px;overflow:hidden;position:relative;
+  display:flex;align-items:center;justify-content:center;
+}
+.camera-wrap video{width:100%;height:100%;object-fit:cover;display:none;transform:scaleX(-1)}
+.camera-wrap video.live{display:block}
+.cam-placeholder{display:flex;flex-direction:column;align-items:center;gap:12px;color:#555;font-family:'Orbitron',sans-serif;font-size:.7rem;letter-spacing:2px}
+.cam-placeholder svg{width:64px;height:64px;fill:none;stroke:#444;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.scan-line{position:absolute;left:0;right:0;height:2px;animation:scanMove 2.5s linear infinite;display:none}
+.cam-modal .scan-line{background:linear-gradient(90deg,transparent,#5aafff,transparent)}
+.cam-modal.tecid .scan-line{background:linear-gradient(90deg,transparent,var(--yellow),transparent)}
+.scan-line.active{display:block}
+@keyframes scanMove{0%{top:0}100%{top:100%}}
+.corners{position:absolute;inset:16px;pointer-events:none}
+.corner{position:absolute;width:20px;height:20px;border-style:solid;display:none}
+.cam-modal .corner{border-color:#5aafff}
+.cam-modal.tecid .corner{border-color:var(--yellow)}
+.corner.on{display:block}
+.corner.tl{top:0;left:0;border-width:2px 0 0 2px}
+.corner.tr{top:0;right:0;border-width:2px 2px 0 0}
+.corner.bl{bottom:0;left:0;border-width:0 0 2px 2px}
+.corner.br{bottom:0;right:0;border-width:0 2px 2px 0}
+.modal-status{font-size:.82rem;letter-spacing:2px;font-weight:600;min-height:1.2em;text-align:center;color:#5aafff88}
+.cam-modal.tecid .modal-status{color:rgba(245,200,0,.5)}
+
+/*═══════════════════════════════════════════
+  TOAST
+═══════════════════════════════════════════*/
+#toast{
+  position:fixed;bottom:calc(90px + var(--safe-bottom));left:50%;transform:translateX(-50%) translateY(20px);
+  background:#111520;border:1.5px solid rgba(255,255,255,.12);border-radius:12px;
+  padding:10px 20px;font-family:'Orbitron',sans-serif;font-size:.65rem;letter-spacing:2px;
+  white-space:nowrap;opacity:0;transition:all .3s;z-index:500;pointer-events:none;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.green{border-color:rgba(0,200,90,.4);color:var(--green)}
+#toast.red{border-color:rgba(255,77,77,.4);color:#ff4d4d}
+
+/*═══════════════════════════════════════════
+  OFFLINE BADGE
+═══════════════════════════════════════════*/
+#offlineBadge{
+  display:none;position:fixed;bottom:calc(16px + var(--safe-bottom));right:16px;
+  background:#1a1a2e;border:1.5px solid #ff4d4d;border-radius:10px;
+  padding:8px 14px;font-family:'Orbitron',sans-serif;font-size:.65rem;
+  letter-spacing:2px;color:#ff4d4d;z-index:999;
+}
+#offlineBadge.show{display:block}
+
+/*═══════════════════════════════════════════
+  UTILITIES
+═══════════════════════════════════════════*/
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.fade-up{animation:fadeUp .5s ease both}
+.spinner{
+  width:20px;height:20px;border:2px solid rgba(255,255,255,.1);
+  border-top-color:var(--green);border-radius:50%;
+  animation:spin .7s linear infinite;display:inline-block;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.processing-overlay{
+  position:absolute;inset:0;background:rgba(0,0,0,.7);
+  display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:12px;border-radius:14px;
+}
+.processing-overlay.show{display:flex}
+.proc-text{font-family:'Orbitron',sans-serif;font-size:.65rem;letter-spacing:2px;color:var(--green)}
+
+@media(max-width:420px){
+  .attendance-label{font-size:1.7rem;letter-spacing:4px}
+  .students-grid{grid-template-columns:1fr 1fr}
+  .bottom-row{grid-template-columns:1fr}
+  .modal{padding:24px 16px}
+  .modal-btns{flex-wrap:wrap}
+  .brand{font-size:1.5rem;letter-spacing:2px}
+  .profile-stats{grid-template-columns:repeat(3,1fr);gap:8px}
+}
+</style>
+</head>
+<body>
+
+<!--═══════════════════════════════════════
+    PAGE 1 — ATTENDANCE
+═══════════════════════════════════════-->
+<div class="page active" id="pageAttendance">
+  <div class="topbar">
+    <div class="brand" onclick="goHome()">STUDYGO</div>
+    <div class="counter">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="counter-text"><span id="count">0</span>/30</span>
+    </div>
+  </div>
+
+  <div class="attendance-card" id="attendanceCard" onclick="activateAttendance(event)">
+    <div class="attendance-label">ATTENDANCE</div>
+    <div class="hint-text">↓ CLICK TO ADD STUDENT ↓</div>
+    <div class="attendance-list" id="list"></div>
+    <div class="add-area" id="addArea">
+      <input id="nameInput" type="text" placeholder="Enter student name…" maxlength="40" autocomplete="off">
+      <button onclick="addStudent(event)">ADD</button>
+    </div>
+  </div>
+
+  <div class="bottom-row">
+    <div class="action-card card-faceid" onclick="openCameraModal('faceid')">
+      <div class="card-icon">👁️</div>
+      <div class="card-label">FACE ID</div>
+      <div class="card-sub">TAP TO SCAN</div>
+    </div>
+    <div class="action-card card-tecid" onclick="openCameraModal('tecid')">
+      <div class="card-icon">🪪</div>
+      <div class="card-label">TEC ID</div>
+      <div class="card-sub">TAP TO SCAN</div>
+    </div>
+  </div>
+</div>
+
+<!--═══════════════════════════════════════
+    PAGE 2 — SCHOOL ADMIN
+═══════════════════════════════════════-->
+<div class="page" id="pageSchool">
+  <div class="topbar">
+    <div class="brand" onclick="goHome()">STUDYGO</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:.6rem;letter-spacing:2px;color:rgba(168,85,247,.7)">SCHOOL ADMIN</div>
+  </div>
+
+  <div class="page-header fade-up">
+    <div class="page-title" style="color:var(--purple)">STUDENT FILE</div>
+    <div class="page-subtitle">MANAGE DESCRIPTORS & RECORDS</div>
+  </div>
+
+  <div class="search-bar fade-up">
+    <input type="text" id="schoolSearch" placeholder="Search students…" oninput="renderSchoolList()" autocomplete="off">
+    <button class="btn-add-student" onclick="openAddStudentModal()">+ NEW STUDENT</button>
+  </div>
+
+  <div class="students-grid" id="schoolGrid"></div>
+  <div class="empty-state" id="schoolEmpty" style="display:none">
+    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M20 8v4m2-2h-4"/></svg>
+    <p>NO STUDENTS YET</p>
+    <p style="font-family:'Rajdhani',sans-serif;font-size:.85rem;color:#444;letter-spacing:1px">Click + NEW STUDENT to register</p>
+  </div>
+</div>
+
+<!--═══════════════════════════════════════
+    PAGE 3 — STUDENT PROFILE
+═══════════════════════════════════════-->
+<div class="page" id="pageStudent">
+  <div class="topbar">
+    <div class="brand" onclick="goHome()">STUDYGO</div>
+    <div style="font-family:'Orbitron',sans-serif;font-size:.6rem;letter-spacing:2px;color:rgba(0,200,90,.7)">MY PROFILE</div>
+  </div>
+
+  <!-- Login state -->
+  <div id="studentLoginWrap" class="login-panel fade-up">
+    <div class="login-icon">🎓</div>
+    <div class="login-title">STUDENT ACCESS</div>
+    <div class="login-subtitle">Enter your Student ID to view your attendance</div>
+    <div class="modal-form" style="width:100%">
+      <div class="form-field">
+        <label class="form-label">STUDENT ID</label>
+        <input class="form-input" id="studentLoginId" type="text" placeholder="e.g. STU-001" autocomplete="off" maxlength="20">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;width:100%">
+      <button class="btn-blue" onclick="studentLogin()">VIEW MY ATTENDANCE</button>
+    </div>
+    <div id="loginError" style="display:none;font-size:.75rem;letter-spacing:1.5px;color:#ff4d4d"></div>
+  </div>
+
+  <!-- Profile state (shown after login) -->
+  <div id="studentProfileWrap" style="display:none;width:100%;max-width:700px;display:none;flex-direction:column;gap:20px;align-items:center">
+    <div class="profile-hero fade-up">
+      <div class="profile-big-avatar" id="profAvatar">🎓</div>
+      <div class="profile-name" id="profName">—</div>
+      <div class="profile-id" id="profId">—</div>
+      <div class="profile-stats">
+        <div class="stat-box">
+          <div class="stat-val" id="profPresent">0</div>
+          <div class="stat-label">PRESENT</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="profAbsent">0</div>
+          <div class="stat-label">ABSENT</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="profPct">0%</div>
+          <div class="stat-label">RATE</div>
+        </div>
+      </div>
+      <button class="btn-outline btn-sm" onclick="studentLogout()">SIGN OUT</button>
+    </div>
+
+    <div class="calendar-wrap fade-up">
+      <div class="cal-header">
+        <div class="cal-title" id="calMonthTitle">—</div>
+        <div class="cal-nav">
+          <button onclick="calPrev()">‹</button>
+          <button onclick="calNext()">›</button>
+        </div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+
+    <div class="att-summary fade-up">
+      <div class="att-summary-header">RECENT ATTENDANCE LOG</div>
+      <div id="attLog"></div>
+    </div>
+  </div>
+</div>
+
+<!--═══════════════════════════════════════
+    BOTTOM NAV DOCK
+═══════════════════════════════════════-->
+<nav class="nav-dock" id="navDock">
+  <div class="nav-item active" id="nav0" onclick="showPage(0)">
+    <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    ATTENDANCE
+  </div>
+  <div class="nav-item" id="nav1" onclick="showPage(1)">
+    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    SCHOOL
+  </div>
+  <div class="nav-item" id="nav2" onclick="showPage(2)">
+    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    STUDENT
+  </div>
+</nav>
+
+<!--═══════════════════════════════════════
+    CAMERA MODAL
+═══════════════════════════════════════-->
+<div class="modal-overlay" id="camOverlay" onclick="if(event.target===this)closeCameraModal()">
+  <div class="modal cam-modal" id="camModal">
+    <div class="modal-title" id="camTitle">FACE ID</div>
+    <div class="camera-wrap" id="cameraWrap">
+      <div class="cam-placeholder" id="camPlaceholder">
+        <svg viewBox="0 0 64 64"><rect x="8" y="18" width="48" height="34" rx="5"/><circle cx="32" cy="34" r="10"/><circle cx="32" cy="34" r="4"/><path d="M24 18 l2-6 h12 l2 6"/><circle cx="50" cy="26" r="2" fill="#444" stroke="none"/></svg>
+        <span>CAMERA OFF</span>
+      </div>
+      <video id="camVideo" autoplay playsinline muted></video>
+      <div class="scan-line" id="scanLine"></div>
+      <div class="corners">
+        <div class="corner tl" id="c1"></div><div class="corner tr" id="c2"></div>
+        <div class="corner bl" id="c3"></div><div class="corner br" id="c4"></div>
+      </div>
+      <div class="processing-overlay" id="procOverlay">
+        <div class="spinner"></div>
+        <div class="proc-text" id="procText">PROCESSING…</div>
+      </div>
+    </div>
+    <div class="modal-status" id="camStatus">READY TO SCAN</div>
+    <div class="modal-btns">
+      <button class="btn-sm btn-generate" id="camStartBtn" onclick="startCameraModal()">START CAMERA</button>
+      <button class="btn-sm btn-outline" onclick="closeCameraModal()">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<!--═══════════════════════════════════════
+    ADD STUDENT MODAL (School Admin)
+═══════════════════════════════════════-->
+<div class="modal-overlay" id="addStudentOverlay" onclick="if(event.target===this)closeAddStudentModal()">
+  <div class="modal detail-modal">
+    <div class="modal-title">NEW STUDENT</div>
+    <div class="modal-form" id="addStudentForm">
+      <div class="form-field">
+        <label class="form-label">FULL NAME *</label>
+        <input class="form-input" id="newStudentName" type="text" placeholder="e.g. Maria Garcia" maxlength="50" autocomplete="off">
+      </div>
+      <div class="form-field">
+        <label class="form-label">STUDENT ID *</label>
+        <input class="form-input" id="newStudentId" type="text" placeholder="e.g. STU-001" maxlength="20" autocomplete="off">
+      </div>
+      <div class="form-field">
+        <label class="form-label">CLASS / GROUP</label>
+        <input class="form-input" id="newStudentClass" type="text" placeholder="e.g. 3A" maxlength="20" autocomplete="off">
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-blue" onclick="saveNewStudent()">CREATE STUDENT</button>
+      <button class="btn-close-modal" onclick="closeAddStudentModal()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!--═══════════════════════════════════════
+    STUDENT DETAIL MODAL (School Admin)
+═══════════════════════════════════════-->
+<div class="modal-overlay" id="studentDetailOverlay" onclick="if(event.target===this)closeStudentDetail()">
+  <div class="modal detail-modal" id="studentDetailModal">
+    <input type="file" id="photoFileInput" accept="image/*" onchange="handlePhotoUpload(event)">
+
+    <div class="detail-avatar" id="detailAvatar" onclick="document.getElementById('photoFileInput').click()">
+      <span id="detailAvatarEmoji">👤</span>
+      <img id="detailAvatarImg" src="" style="display:none">
+      <div class="upload-hint">📷 UPLOAD PHOTO</div>
+    </div>
+
+    <div class="detail-name" id="detailName">—</div>
+    <div class="detail-meta" id="detailMeta"></div>
+
+    <div class="divider"></div>
+
+    <!-- Photo & Descriptor -->
+    <div class="descriptor-section" style="width:100%">
+      <div class="desc-title">FACIAL DESCRIPTOR</div>
+      <div class="descriptor-status" id="descStatus">
+        <div class="desc-dot none" id="descDot"></div>
+        <span id="descText">No descriptor generated</span>
+      </div>
+      <div class="desc-actions" id="descActions">
+        <button class="btn-sm btn-generate" id="btnGenerate" onclick="generateDescriptor()">
+          ⚡ GENERATE FROM PHOTO
+        </button>
+        <button class="btn-sm btn-danger" id="btnClearDesc" onclick="clearDescriptor()" style="display:none">
+          🗑 CLEAR DESCRIPTOR
+        </button>
+      </div>
+      <div id="descProgress" style="display:none;margin-top:10px;font-size:.72rem;letter-spacing:1.5px;color:var(--green)"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Attendance Log -->
+    <div class="descriptor-section" style="width:100%">
+      <div class="desc-title">ATTENDANCE RECORD</div>
+      <div id="detailAttLog" class="att-log"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn-sm btn-generate" onclick="markPresentToday()">✓ MARK PRESENT TODAY</button>
+        <button class="btn-sm btn-danger" onclick="markAbsentToday()">✗ MARK ABSENT TODAY</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="modal-btns">
+      <button class="btn-sm btn-danger" style="flex:1" onclick="deleteCurrentStudent()">DELETE STUDENT</button>
+      <button class="btn-close-modal" onclick="closeStudentDetail()">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<!--═══════════════════════════════════════
+    TOAST & OFFLINE
+═══════════════════════════════════════-->
+<div id="toast"></div>
+<div id="offlineBadge">⚡ OFFLINE</div>
+
+<script>
+/*════════════════════════════════════════════
+  STATE & STORAGE
+════════════════════════════════════════════*/
+const DB_KEY  = 'studygo_db';
+let db = loadDB();
+
+function loadDB(){
+  try{
+    const raw = localStorage.getItem(DB_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return { students:[], attendance:[], session:{ present:[], date: today() } };
+}
+function saveDB(){ try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){} }
+function today(){ return new Date().toISOString().slice(0,10); }
+function fmt(dateStr){ const d=new Date(dateStr+'T00:00:00'); return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); }
+
+// Ensure today's session
+if(!db.session || db.session.date !== today()){
+  db.session = { present:[], date: today() };
+  saveDB();
+}
+
+/*════════════════════════════════════════════
+  NAVIGATION
+════════════════════════════════════════════*/
+const pages   = ['pageAttendance','pageSchool','pageStudent'];
+const navCols = ['','blue','purple'];
+let curPage = 0;
+
+function showPage(n){
+  pages.forEach((p,i)=>{
+    document.getElementById(p).classList.toggle('active', i===n);
+    const ni = document.getElementById('nav'+i);
+    ni.classList.toggle('active', i===n);
+    ni.className = 'nav-item' + (i===n?' active':'') + (navCols[i]?' '+navCols[i]:'');
+  });
+  curPage = n;
+  if(n===1) renderSchoolList();
+  if(n===2) renderStudentProfile();
+}
+function goHome(){ showPage(0); }
+
+/*════════════════════════════════════════════
+  PAGE 1 — ATTENDANCE
+════════════════════════════════════════════*/
+const MAX=30;
+const listEl    = document.getElementById('list');
+const countEl   = document.getElementById('count');
+const nameInput = document.getElementById('nameInput');
+const card      = document.getElementById('attendanceCard');
+
+nameInput.addEventListener('keydown', e => { if(e.key==='Enter') addStudent(e); });
+document.addEventListener('click', e => {
+  if(!card.contains(e.target) && !e.target.closest('.modal')) card.classList.remove('active');
+});
+
+function activateAttendance(e){
+  card.classList.add('active');
+  setTimeout(()=>nameInput.focus(), 60);
+}
+
+function addStudent(e){
+  if(e) e.stopPropagation();
+  const name = nameInput.value.trim();
+  if(!name) return;
+  if(db.session.present.length >= MAX){ showToast('MAX 30 STUDENTS REACHED','red'); return; }
+  if(db.session.present.includes(name)){ showToast('ALREADY MARKED PRESENT','red'); return; }
+  db.session.present.push(name);
+  // Also mark in student records if matched
+  const matched = db.students.find(s=>s.name.toLowerCase()===name.toLowerCase());
+  if(matched) markAttendance(matched.id, today(), true);
+  nameInput.value='';
+  nameInput.focus();
+  saveDB();
+  renderAttendanceList();
+}
+
+function renderAttendanceList(){
+  listEl.innerHTML='';
+  db.session.present.forEach((name,i)=>{
+    const row=document.createElement('div');
+    row.className='student-entry';
+    row.innerHTML=`<span class="student-num">${String(i+1).padStart(2,'0')}</span>
+      <span class="student-name">${esc(name)}</span>
+      <span class="student-check">✓</span>`;
+    listEl.appendChild(row);
+  });
+  listEl.scrollTop=listEl.scrollHeight;
+  countEl.textContent=db.session.present.length;
+  countEl.style.color=db.session.present.length>=MAX?'#ff4d4d':'var(--green)';
+}
+renderAttendanceList();
+
+/*════════════════════════════════════════════
+  PAGE 2 — SCHOOL ADMIN
+════════════════════════════════════════════*/
+function renderSchoolList(){
+  const q=(document.getElementById('schoolSearch').value||'').toLowerCase();
+  const grid=document.getElementById('schoolGrid');
+  const empty=document.getElementById('schoolEmpty');
+  const filtered=db.students.filter(s=>!q||s.name.toLowerCase().includes(q)||s.id.toLowerCase().includes(q));
+  grid.innerHTML='';
+  if(filtered.length===0){ empty.style.display='flex'; return; }
+  empty.style.display='none';
+  filtered.forEach(s=>{
+    const att = getStudentAttendance(s.id);
+    const pct = att.total>0?Math.round(att.present/att.total*100):0;
+    const card=document.createElement('div');
+    card.className='student-card';
+    card.onclick=()=>openStudentDetail(s.id);
+    const hasDesc=!!s.descriptor;
+    const avatarContent = s.photo
+      ? `<img src="${s.photo}" alt="">`
+      : `<span>${s.name.charAt(0).toUpperCase()}</span>`;
+    card.innerHTML=`
+      <div class="student-avatar">
+        ${avatarContent}
+        <div class="avatar-badge ${hasDesc?'has-descriptor':'no-descriptor'}" title="${hasDesc?'Descriptor ready':'No descriptor'}">
+          ${hasDesc?'✓':'?'}
+        </div>
+      </div>
+      <div class="sc-name">${esc(s.name)}</div>
+      <div class="sc-id">${esc(s.id)}${s.class?' · '+esc(s.class):''}</div>
+      <div class="sc-attendance">${pct}% · ${att.present}/${att.total} days</div>`;
+    grid.appendChild(card);
+  });
+}
+
+function getStudentAttendance(sid){
+  const recs = db.attendance.filter(a=>a.sid===sid);
+  return { total:recs.length, present:recs.filter(a=>a.present).length };
+}
+
+function markAttendance(sid, date, present){
+  const idx = db.attendance.findIndex(a=>a.sid===sid && a.date===date);
+  if(idx>-1) db.attendance[idx].present=present;
+  else db.attendance.push({sid,date,present});
+  saveDB();
+}
+
+/* ADD STUDENT MODAL */
+function openAddStudentModal(){
+  document.getElementById('newStudentName').value='';
+  document.getElementById('newStudentId').value='';
+  document.getElementById('newStudentClass').value='';
+  document.getElementById('addStudentOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('newStudentName').focus(),100);
+}
+function closeAddStudentModal(){
+  document.getElementById('addStudentOverlay').classList.remove('open');
+}
+function saveNewStudent(){
+  const name=document.getElementById('newStudentName').value.trim();
+  const id=document.getElementById('newStudentId').value.trim();
+  const cls=document.getElementById('newStudentClass').value.trim();
+  if(!name||!id){ showToast('NAME & ID REQUIRED','red'); return; }
+  if(db.students.find(s=>s.id===id)){ showToast('ID ALREADY EXISTS','red'); return; }
+  db.students.push({name,id,class:cls,photo:null,descriptor:null,createdAt:today()});
+  saveDB();
+  closeAddStudentModal();
+  renderSchoolList();
+  showToast('STUDENT ADDED','green');
+}
+
+/* STUDENT DETAIL */
+let currentStudentId = null;
+function openStudentDetail(sid){
+  currentStudentId=sid;
+  const s=db.students.find(s=>s.id===sid);
+  if(!s) return;
+
+  // Avatar
+  const img=document.getElementById('detailAvatarImg');
+  const emoji=document.getElementById('detailAvatarEmoji');
+  if(s.photo){
+    img.src=s.photo; img.style.display='block'; emoji.style.display='none';
+  } else {
+    img.style.display='none'; emoji.style.display='block';
+    emoji.textContent=s.name.charAt(0).toUpperCase();
+  }
+
+  document.getElementById('detailName').textContent=s.name;
+
+  // Meta tags
+  const meta=document.getElementById('detailMeta');
+  meta.innerHTML=`
+    <span class="meta-tag meta-blue">${esc(s.id)}</span>
+    ${s.class?`<span class="meta-tag meta-yellow">CLASS ${esc(s.class)}</span>`:''}
+    <span class="meta-tag meta-green">ADDED ${s.createdAt||'—'}</span>`;
+
+  // Descriptor status
+  updateDescriptorUI(s);
+
+  // Attendance log
+  renderDetailAttLog(sid);
+
+  document.getElementById('studentDetailOverlay').classList.add('open');
+}
+function closeStudentDetail(){
+  document.getElementById('studentDetailOverlay').classList.remove('open');
+  currentStudentId=null;
+}
+
+function updateDescriptorUI(s){
+  const dot=document.getElementById('descDot');
+  const txt=document.getElementById('descText');
+  const btnClear=document.getElementById('btnClearDesc');
+  const btnGen=document.getElementById('btnGenerate');
+  if(s.descriptor){
+    dot.className='desc-dot ok';
+    txt.textContent='Descriptor ready ('+s.descriptor.length+' features)';
+    btnClear.style.display='inline-flex';
+    btnGen.textContent='⚡ REGENERATE';
+  } else {
+    dot.className='desc-dot none';
+    txt.textContent='No descriptor — upload a photo first';
+    btnClear.style.display='none';
+    btnGen.textContent='⚡ GENERATE FROM PHOTO';
+  }
+}
+
+function renderDetailAttLog(sid){
+  const log=document.getElementById('detailAttLog');
+  const recs=db.attendance.filter(a=>a.sid===sid).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20);
+  if(recs.length===0){
+    log.innerHTML='<div style="font-size:.8rem;color:#444;padding:8px 0;letter-spacing:1px">No attendance records yet</div>';
+    return;
+  }
+  log.innerHTML=recs.map(r=>`
+    <div class="att-row">
+      <div class="att-date">${fmt(r.date)}</div>
+      <div class="${r.present?'att-present':'att-absent'}">${r.present?'PRESENT':'ABSENT'}</div>
+    </div>`).join('');
+}
+
+function markPresentToday(){
+  if(!currentStudentId) return;
+  markAttendance(currentStudentId,today(),true);
+  const s=db.students.find(s=>s.id===currentStudentId);
+  if(s && !db.session.present.includes(s.name)){
+    db.session.present.push(s.name);
+    renderAttendanceList();
+  }
+  saveDB();
+  renderDetailAttLog(currentStudentId);
+  renderSchoolList();
+  showToast('MARKED PRESENT','green');
+}
+function markAbsentToday(){
+  if(!currentStudentId) return;
+  markAttendance(currentStudentId,today(),false);
+  const s=db.students.find(s=>s.id===currentStudentId);
+  if(s){ db.session.present=db.session.present.filter(n=>n!==s.name); renderAttendanceList(); }
+  saveDB();
+  renderDetailAttLog(currentStudentId);
+  renderSchoolList();
+  showToast('MARKED ABSENT','red');
+}
+
+function deleteCurrentStudent(){
+  if(!currentStudentId) return;
+  if(!confirm('Delete this student? All records will be removed.')) return;
+  db.students=db.students.filter(s=>s.id!==currentStudentId);
+  db.attendance=db.attendance.filter(a=>a.sid!==currentStudentId);
+  saveDB();
+  closeStudentDetail();
+  renderSchoolList();
+  showToast('STUDENT DELETED','red');
+}
+
+/* PHOTO UPLOAD */
+function handlePhotoUpload(e){
+  const file=e.target.files[0];
+  if(!file||!currentStudentId) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const dataUrl=ev.target.result;
+    const s=db.students.find(s=>s.id===currentStudentId);
+    if(s){
+      s.photo=dataUrl;
+      saveDB();
+      const img=document.getElementById('detailAvatarImg');
+      const emoji=document.getElementById('detailAvatarEmoji');
+      img.src=dataUrl; img.style.display='block'; emoji.style.display='none';
+      showToast('PHOTO UPLOADED','green');
+      renderSchoolList();
+    }
+  };
+  reader.readAsDataURL(file);
+  e.target.value='';
+}
+
+/* FACIAL DESCRIPTOR GENERATION */
+let faceApiLoaded = false;
+let faceApiLoading = false;
+
+async function ensureFaceApi(){
+  if(faceApiLoaded) return true;
+  if(typeof faceapi==='undefined'){
+    showToast('LOADING FACE-API…','green');
+    return new Promise(res=>{
+      const t=setInterval(()=>{
+        if(typeof faceapi!=='undefined'){ clearInterval(t); faceApiLoaded=true; res(true); }
+      },200);
+      setTimeout(()=>{ clearInterval(t); res(false); },10000);
+    });
+  }
+  // Load models from CDN
+  if(!faceApiLoading){
+    faceApiLoading=true;
+    try{
+      const MODEL_URL='https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model';
+      await Promise.all([
+        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+      ]);
+      faceApiLoaded=true;
+      return true;
+    }catch(err){
+      faceApiLoading=false;
+      return false;
+    }
+  }
+  return false;
+}
+
+async function generateDescriptor(){
+  if(!currentStudentId) return;
+  const s=db.students.find(s=>s.id===currentStudentId);
+  if(!s||!s.photo){ showToast('UPLOAD A PHOTO FIRST','red'); return; }
+
+  const btn=document.getElementById('btnGenerate');
+  const prog=document.getElementById('descProgress');
+  btn.disabled=true;
+  prog.style.display='block';
+  prog.textContent='Loading face-api models…';
+
+  try{
+    const loaded = await ensureFaceApi();
+    if(!loaded){ throw new Error('face-api not available'); }
+
+    prog.textContent='Detecting face…';
+    const img=new Image();
+    img.src=s.photo;
+    await new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; });
+
+    const detection=await faceapi.detectSingleFace(img)
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+
+    if(!detection){ throw new Error('No face detected in photo'); }
+
+    s.descriptor=Array.from(detection.descriptor);
+    saveDB();
+    prog.textContent='';
+    prog.style.display='none';
+    updateDescriptorUI(s);
+    renderSchoolList();
+    showToast('DESCRIPTOR GENERATED ✓','green');
+  }catch(err){
+    prog.textContent='ERROR: '+(err.message||'Unknown error').toUpperCase().slice(0,50);
+    showToast('FAILED: '+err.message.slice(0,30).toUpperCase(),'red');
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+function clearDescriptor(){
+  if(!currentStudentId) return;
+  const s=db.students.find(s=>s.id===currentStudentId);
+  if(s){ s.descriptor=null; saveDB(); updateDescriptorUI(s); renderSchoolList(); showToast('DESCRIPTOR CLEARED','red'); }
+}
+
+/*════════════════════════════════════════════
+  PAGE 3 — STUDENT PROFILE
+════════════════════════════════════════════*/
+let loggedStudentId=null;
+let calYear=new Date().getFullYear();
+let calMonth=new Date().getMonth();
+
+function studentLogin(){
+  const inputId=document.getElementById('studentLoginId').value.trim();
+  const err=document.getElementById('loginError');
+  const s=db.students.find(s=>s.id===inputId);
+  if(!s){ err.style.display='block'; err.textContent='STUDENT ID NOT FOUND'; return; }
+  err.style.display='none';
+  loggedStudentId=s.id;
+  renderStudentProfile();
+}
+function studentLogout(){
+  loggedStudentId=null;
+  document.getElementById('studentLoginWrap').style.display='flex';
+  document.getElementById('studentProfileWrap').style.display='none';
+  document.getElementById('studentLoginId').value='';
+}
+
+function renderStudentProfile(){
+  if(!loggedStudentId){ return; }
+  const s=db.students.find(s=>s.id===loggedStudentId);
+  if(!s){ studentLogout(); return; }
+
+  document.getElementById('studentLoginWrap').style.display='none';
+  const wrap=document.getElementById('studentProfileWrap');
+  wrap.style.display='flex';
+
+  // Avatar
+  const av=document.getElementById('profAvatar');
+  av.innerHTML='';
+  if(s.photo){
+    const img=document.createElement('img');
+    img.src=s.photo; img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:50%';
+    av.appendChild(img);
+  } else {
+    av.textContent=s.name.charAt(0).toUpperCase();
+  }
+
+  document.getElementById('profName').textContent=s.name;
+  document.getElementById('profId').textContent=s.id+(s.class?' · CLASS '+s.class:'');
+
+  const att=getStudentAttendance(s.id);
+  const pct=att.total>0?Math.round(att.present/att.total*100):0;
+  document.getElementById('profPresent').textContent=att.present;
+  document.getElementById('profAbsent').textContent=att.total-att.present;
+  document.getElementById('profPct').textContent=pct+'%';
+
+  renderCalendar();
+  renderAttLog();
+}
+
+function renderCalendar(){
+  if(!loggedStudentId) return;
+  const MONTHS=['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE',
+    'JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+  document.getElementById('calMonthTitle').textContent=MONTHS[calMonth]+' '+calYear;
+
+  const grid=document.getElementById('calGrid');
+  grid.innerHTML='';
+  ['SUN','MON','TUE','WED','THU','FRI','SAT'].forEach(d=>{
+    const el=document.createElement('div');
+    el.className='cal-day-name'; el.textContent=d; grid.appendChild(el);
+  });
+
+  const firstDay=new Date(calYear,calMonth,1).getDay();
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const todayStr=today();
+  const recs=db.attendance.filter(a=>a.sid===loggedStudentId);
+
+  for(let i=0;i<firstDay;i++){
+    const el=document.createElement('div'); el.className='cal-day empty'; grid.appendChild(el);
+  }
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const rec=recs.find(r=>r.date===dateStr);
+    const el=document.createElement('div');
+    el.textContent=d;
+    let cls='cal-day';
+    if(dateStr===todayStr) cls+=' today';
+    else if(dateStr>todayStr) cls+=' future';
+    else if(rec?.present) cls+=' present';
+    else if(rec) cls+=' absent';
+    el.className=cls;
+    grid.appendChild(el);
+  }
+}
+function calPrev(){ calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
+function calNext(){ calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
+
+function renderAttLog(){
+  if(!loggedStudentId) return;
+  const log=document.getElementById('attLog');
+  const recs=db.attendance.filter(a=>a.sid===loggedStudentId)
+    .sort((a,b)=>b.date.localeCompare(a.date)).slice(0,30);
+  if(recs.length===0){
+    log.innerHTML='<div class="att-item"><span style="color:#444;font-size:.85rem;letter-spacing:1px">No records yet</span></div>';
+    return;
+  }
+  const s=db.students.find(s=>s.id===loggedStudentId);
+  log.innerHTML=recs.map(r=>`
+    <div class="att-item">
+      <div class="att-dot ${r.present?'p':'a'}"></div>
+      <div>
+        <div class="att-item-date">${fmt(r.date)}</div>
+        ${s?.class?`<div class="att-item-class">CLASS ${esc(s.class)}</div>`:''}
+      </div>
+      <div class="att-item-status ${r.present?'p':'a'}">${r.present?'PRESENT':'ABSENT'}</div>
+    </div>`).join('');
+}
+
+/*════════════════════════════════════════════
+  CAMERA MODAL (shared)
+════════════════════════════════════════════*/
+let camStream=null;
+const camOverlay=document.getElementById('camOverlay');
+const camModal=document.getElementById('camModal');
+const camVideo=document.getElementById('camVideo');
+const scanLine=document.getElementById('scanLine');
+const camHolder=document.getElementById('camPlaceholder');
+const camStatus=document.getElementById('camStatus');
+const camStartBtn=document.getElementById('camStartBtn');
+const cornerEls=['c1','c2','c3','c4'].map(id=>document.getElementById(id));
+const procOverlay=document.getElementById('procOverlay');
+
+function openCameraModal(mode){
+  camModal.className='modal cam-modal'+(mode==='tecid'?' tecid':'');
+  document.getElementById('camTitle').textContent=mode==='faceid'?'FACE ID':'TEC ID';
+  camStatus.textContent='READY TO SCAN';
+  camStartBtn.textContent='START CAMERA';
+  camStartBtn.disabled=false;
+  stopCamStream();
+  camVideo.classList.remove('live');
+  camHolder.style.display='flex';
+  scanLine.classList.remove('active');
+  cornerEls.forEach(c=>c.classList.remove('on'));
+  procOverlay.classList.remove('show');
+  camOverlay.classList.add('open');
+}
+function closeCameraModal(){
+  stopCamStream();
+  camOverlay.classList.remove('open');
+  camVideo.classList.remove('live');
+  scanLine.classList.remove('active');
+  cornerEls.forEach(c=>c.classList.remove('on'));
+  camHolder.style.display='flex';
+}
+function startCameraModal(){
+  if(!navigator.mediaDevices?.getUserMedia){
+    camStatus.textContent='CAMERA NOT SUPPORTED'; return;
+  }
+  camStatus.textContent='REQUESTING PERMISSION…';
+  camStartBtn.disabled=true;
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false})
+    .catch(()=>navigator.mediaDevices.getUserMedia({video:true,audio:false}))
+    .then(stream=>{
+      camStream=stream; camVideo.srcObject=stream;
+      camVideo.classList.add('live'); camHolder.style.display='none';
+      scanLine.classList.add('active'); cornerEls.forEach(c=>c.classList.add('on'));
+      camStatus.textContent='CAMERA ACTIVE — SCANNING…';
+      camStartBtn.textContent='SCANNING…';
+    })
+    .catch(err=>{
+      camStartBtn.disabled=false; camStartBtn.textContent='RETRY';
+      camStatus.textContent=
+        err.name==='NotAllowedError'?'PERMISSION DENIED':
+        err.name==='NotFoundError'?'NO CAMERA FOUND':
+        'ERROR: '+(err.message||err.name).toUpperCase().slice(0,40);
+    });
+}
+function stopCamStream(){
+  if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; camVideo.srcObject=null; }
+}
+
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeCameraModal(); closeStudentDetail(); closeAddStudentModal(); }});
+
+/*════════════════════════════════════════════
+  UTILITIES
+════════════════════════════════════════════*/
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+let toastTimer=null;
+function showToast(msg,type='green'){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='show '+(type||'');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.className='',2400);
+}
+
+window.addEventListener('online', ()=>document.getElementById('offlineBadge').classList.remove('show'));
+window.addEventListener('offline',()=>document.getElementById('offlineBadge').classList.add('show'));
+if(!navigator.onLine) document.getElementById('offlineBadge').classList.add('show');
+
+/*════════════════════════════════════════════
+  SERVICE WORKER
+════════════════════════════════════════════*/
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js')
+      .then(r=>console.log('SW registered',r.scope))
+      .catch(e=>console.log('SW error',e));
+  });
+}
+
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault(); deferredPrompt=e;
+});
+</script>
+</body>
+</html>
